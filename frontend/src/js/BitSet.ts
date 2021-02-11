@@ -2,6 +2,7 @@
  * Bitset Class Adapted from Daniel Lemire's TypedFastBitSet.js
  */
 
+type Sequence<T> = (t: number) => T
 type anyArray = Array<number> | Uint32Array | Uint16Array | Uint8Array
 type anyArrayConstructor =
   | ArrayConstructor
@@ -215,7 +216,7 @@ export class BitSet {
   }
 
   // Iterate the members of this BitSet
-  *imap(fnc?: (t: number) => unknown): IterableIterator<number> {
+  *imap(fnc?: Sequence<T>): IterableIterator<T> {
     fnc = fnc || ((i) => i)
     const c = this.words.length
     for (let k = 0; k < c; ++k) {
@@ -230,10 +231,7 @@ export class BitSet {
 
   // iterate a subset of this BitSet, where the subset is a BitSet
   // i.e. for each i in subBitSet, yield the i-th member of this BitSet
-  *imap_subset(
-    bitSubSet: BitSet,
-    fnc?: (t: number) => unknown
-  ): IterableIterator<unknown> {
+  *imap_subset(bitSubSet: BitSet, fnc?: Sequence<T>): IterableIterator<T> {
     const idxGen = bitSubSet.imap()
 
     let pos = 0

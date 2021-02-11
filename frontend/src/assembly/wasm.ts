@@ -3,6 +3,7 @@
 
 let DOT_IMAGEDATA_OFFSET: usize = 0
 let PATH_IMAGEDATA_OFFSET: usize = 0
+let ACTIVITY_DATA_OFFSET: usize = 0
 
 let WIDTH: i32
 let HEIGHT: i32
@@ -273,6 +274,7 @@ function fill32(start: usize, end: usize, val32: i32): void {
 /*
  *  Path Drawing functions
  */
+
 /* ***************************************************
  * This code line-drawing at the pixel level is adapted from
  * "anti-aliased thick line" at
@@ -361,5 +363,47 @@ export function drawSegment(fx0: f32, fy0: f32, fx1: f32, fy1: f32): void {
       err += dx
       y0 += sy
     }
+  }
+}
+
+/*
+ * Activity data processing functions
+ */
+const MAX_LATITUDE: f32 = 85.0511287798
+const EARTH_RADIUS: f32 = 6378137.0
+const RAD: f32 = Mathf.PI / 180.0
+
+// CRS transformation
+const S: f32 = 0.5 / (Mathf.PI * EARTH_RADIUS)
+const A: f32 = S
+const B: f32 = 0.5
+const C: f32 = -S
+const D: f32 = 0.5
+
+/**
+ * This is a streamlined version of Leaflet's EPSG:3857 projection.
+ *   Given a pointer to a block of memory with nPoints 32-bit float
+ *   latLng pairs, this function converts them in-place to
+ *   32-bit floats of rectangular coordinates.
+ */
+export function CRSproject(startLoc: usize, nPoints: i32, zoom: u8 = 0): void {
+  const scale: f32 = <f32>(1 << (8 + zoom))
+
+  for (let i: i32 = 0; i < nPoints; i++) {
+    const loc = startLoc + (i << 2)
+    let px: f32 = load<f32>(loc) // latitude
+    let py: f32 = load<f32>(loc + 4) // longitude
+
+    px = Mathf.max(Mathf.min(MAX_LATITUDE, px), -MAX_LATITUDE)
+    const sin = Mathf.sin(px * RAD)
+
+    px = EARTH_RADIUS * py * RAD
+    py = (EARTH_RADIUS * Mathf.log((1 + sin) / (1 - sin))) / 2
+
+    px = scale * (A * px + B)
+    py = scale * (C * py + D)
+
+    store<f32>(loc, px)
+    store<f32>(loc + 4, py)
   }
 }
